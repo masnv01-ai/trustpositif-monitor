@@ -30,9 +30,9 @@ for filename, value in (
 r=requests.get('https://my.surfshark.com/vpn/api/v1/server/configurations', timeout=(15,90))
 r.raise_for_status()
 with zipfile.ZipFile(io.BytesIO(r.content)) as archive:
-    candidates=[n for n in archive.namelist() if n.endswith('id-jak.prod.surfshark.com_tcp.ovpn')]
+    candidates=[n for n in archive.namelist() if n.endswith('id-jak.prod.surfshark.com_udp.ovpn')]
     if len(candidates)!=1:
-        raise RuntimeError('Konfigurasi Jakarta TCP tidak ditemukan')
+        raise RuntimeError('Konfigurasi Jakarta UDP tidak ditemukan')
     config=archive.read(candidates[0]).decode()
 config='\n'.join(line for line in config.splitlines() if line.strip() not in ('auth-user-pass','fast-io','cipher AES-256-CBC'))
 ips=sorted({r[4][0] for r in socket.getaddrinfo(urlsplit(updater.SOURCE_URL).hostname,443,family=socket.AF_INET)})
