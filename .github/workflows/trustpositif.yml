@@ -1,0 +1,60 @@
+name: TrustPositif Monitor
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: trustpositif-monitor
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          sudo apt-get update -qq
+          sudo apt-get install -y openvpn
+      - name: Test updater
+        run: python -m unittest discover -s tests
+      - name: Prepare credentials and Indonesia VPN
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SURFSHARK_USERNAME: ${{ secrets.SURFSHARK_USERNAME }}
+          SURFSHARK_PASSWORD: ${{ secrets.SURFSHARK_PASSWORD }}
+        run: python ci_vpn.py
+      - name: Connect Surfshark Jakarta
+        run: |
+          sudo openvpn --config "$RUNNER_TEMP/trustpositif/vpn.ovpn" --daemon trustpositif-vpn --writepid "$RUNNER_TEMP/trustpositif/vpn.pid" --log "$RUNNER_TEMP/trustpositif/vpn.log"
+          for attempt in {1..60}; do
+            if sudo grep -q 'Initialization Sequence Completed' "$RUNNER_TEMP/trustpositif/vpn.log"; then
+              echo 'Surfshark Indonesia connected'
+              exit 0
+            fi
+            if sudo grep -q 'AUTH_FAILED' "$RUNNER_TEMP/trustpositif/vpn.log"; then
+              echo 'Surfshark authentication failed' >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          echo 'VPN connection timed out' >&2
+          exit 1
+      - name: Check domains and update blocked statuses
+        env:
+          FIREBASE_CREDENTIALS: ${{ runner.temp }}/trustpositif/firebase.json
+        run: python updater.py --once
+      - name: Remove temporary download and credentials
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/trustpositif/vpn.pid" ]; then
+            sudo kill "$(cat "$RUNNER_TEMP/trustpositif/vpn.pid")" 2>/dev/null || true
+          fi
+          python -c "import updater; updater.cleanup_download()"
+          sudo rm -rf -- "$RUNNER_TEMP/trustpositif"
