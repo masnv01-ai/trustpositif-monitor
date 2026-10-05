@@ -15,9 +15,7 @@ for name in ('FIREBASE_SERVICE_ACCOUNT', 'SURFSHARK_USERNAME', 'SURFSHARK_PASSWO
         raise RuntimeError(f'GitHub Secret {name} belum tersedia')
 for filename, value in (
     ('firebase.json', os.environ['FIREBASE_SERVICE_ACCOUNT']),
-    ('vpn-auth.txt', os.environ['SURFSHARK_USERNAME'].strip()+'
-'+os.environ['SURFSHARK_PASSWORD'].strip()+'
-'),
+    ('vpn-auth.txt', os.environ['SURFSHARK_USERNAME'].strip()+'\n'+os.environ['SURFSHARK_PASSWORD'].strip()+'\n'),
 ):
     path = root / filename
     path.touch(mode=0o600)
@@ -30,18 +28,9 @@ with zipfile.ZipFile(io.BytesIO(r.content)) as archive:
     if len(candidates)!=1:
         raise RuntimeError('Konfigurasi Jakarta TCP tidak ditemukan')
     config=archive.read(candidates[0]).decode()
-config='
-'.join(line for line in config.splitlines() if line.strip() not in ('auth-user-pass','fast-io','cipher AES-256-CBC'))
+config='\n'.join(line for line in config.splitlines() if line.strip() not in ('auth-user-pass','fast-io','cipher AES-256-CBC'))
 ips=sorted({r[4][0] for r in socket.getaddrinfo(urlsplit(updater.SOURCE_URL).hostname,443,family=socket.AF_INET)})
-config+='
-auth-user-pass '+str(root/'vpn-auth.txt')+'
-auth-nocache
-route-nopull
-data-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC
-connect-timeout 15
-connect-retry-max 3
-'
-config+=''.join('route '+ip+' 255.255.255.255
-' for ip in ips)
+config+='\nauth-user-pass '+str(root/'vpn-auth.txt')+'\nauth-nocache\nroute-nopull\ndata-ciphers AES-256-GCM:AES-128-GCM:AES-256-CBC\nconnect-timeout 15\nconnect-retry-max 3\n'
+config+=''.join('route '+ip+' 255.255.255.255\n' for ip in ips)
 path=root/'vpn.ovpn';path.write_text(config);path.chmod(0o600)
 print('Konfigurasi Surfshark Jakarta siap; rute hanya ke TrustPositif.')
