@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/
+work/
+*service-account*.json
+.env
+*.ovpn
+*auth*.txt
