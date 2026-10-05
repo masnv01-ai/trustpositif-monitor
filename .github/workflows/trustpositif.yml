@@ -44,6 +44,7 @@ jobs:
             fi
             sleep 1
           done
+          sudo grep -E 'ERROR|Error|AUTH_FAILED|TLS Error|Connection refused|RESOLVE|Cannot|failed|Network is unreachable|Connection reset' "$RUNNER_TEMP/trustpositif/vpn.log" | tail -n 15 || true
           echo 'VPN connection timed out' >&2
           exit 1
       - name: Check domains and update blocked statuses
