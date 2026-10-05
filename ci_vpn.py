@@ -1,5 +1,7 @@
 """Prepare a temporary Surfshark connection for a GitHub-hosted Linux runner."""
 import io
+import json
+from firebase_admin import credentials
 import os
 import socket
 import zipfile
@@ -13,6 +15,10 @@ root.mkdir(mode=0o700, exist_ok=True)
 for name in ('FIREBASE_SERVICE_ACCOUNT', 'SURFSHARK_USERNAME', 'SURFSHARK_PASSWORD'):
     if not os.environ.get(name):
         raise RuntimeError(f'GitHub Secret {name} belum tersedia')
+try:
+    credentials.Certificate(json.loads(os.environ['FIREBASE_SERVICE_ACCOUNT']))
+except (ValueError, TypeError, KeyError) as exc:
+    raise RuntimeError('JSON Firebase atau private_key tidak valid; gunakan file asli tanpa mengubah isinya') from None
 for filename, value in (
     ('firebase.json', os.environ['FIREBASE_SERVICE_ACCOUNT']),
     ('vpn-auth.txt', os.environ['SURFSHARK_USERNAME'].strip()+'\n'+os.environ['SURFSHARK_PASSWORD'].strip()+'\n'),
