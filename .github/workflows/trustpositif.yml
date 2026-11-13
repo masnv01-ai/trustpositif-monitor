@@ -1,7 +1,6 @@
 name: TrustPositif Monitor
 on:
-  schedule:
-    - cron: '*/5 * * * *'
+  # Recurring scans now run on the isolated VPS systemd timer.
   workflow_dispatch:
 permissions:
   contents: read
